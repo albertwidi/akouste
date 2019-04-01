@@ -6,6 +6,12 @@ Akouste is using `Consul` as KV store and `consul-template` for listening config
 
 ## Development
 
+### Go Module
+
+Akouste is using Go Module. Please use the latest go version: `Go 1.12.1`.
+
+### Running Locally
+
 Testing configuration changes on local environment
 
 1. Go to ./cmd/operator
