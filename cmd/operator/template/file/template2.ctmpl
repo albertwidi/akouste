@@ -1,0 +1,2 @@
+new: {{ key "/new" }}
+stuff: {{ key "/stuff" -}}
