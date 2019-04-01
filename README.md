@@ -1,6 +1,6 @@
 # Akouste
 
-Configuration manager for application in kubernetes.
+Akouste or ακούστε is a configuration manager for application in kubernetes.
 
 Akouste is using `Consul` as KV store and `consul-template` for listening configuration changes.
 
