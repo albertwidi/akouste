@@ -7,9 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/s3blob"
-	"github.com/kosanapp/kosan-backend/pkg/upload"
+	"gocloud.dev/blob"
+	"gocloud.dev/blob/s3blob"
 )
 
 // S3 struct
@@ -49,7 +48,7 @@ func New(ctx context.Context, config Config) (*S3, error) {
 		return nil, err
 	}
 
-	bb, err := s3blob.OpenBucket(ctx, config.Bucket, sess, nil)
+	bb, err := s3blob.OpenBucket(ctx, sess, config.Bucket, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -68,7 +67,7 @@ func (s3 *S3) GetBlobBucket() *blob.Bucket {
 
 // Name of upload provider
 func (s3 *S3) Name() string {
-	return upload.StorageS3
+	return "s3"
 }
 
 // BucketName return name of bucket used for upload

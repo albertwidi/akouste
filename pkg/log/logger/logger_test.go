@@ -32,7 +32,7 @@ func TestLogOutput(t *testing.T) {
 		return
 	}
 
-	logger.Infoln("logger")
+	logger.Info("logger")
 
 	wdPath, err := os.Getwd()
 	if err != nil {

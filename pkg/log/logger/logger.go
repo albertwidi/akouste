@@ -1,17 +1,15 @@
 package logger
 
 import (
-	"io"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/rs/zerolog"
+	"github.com/tokopedia/tdk/x/go/errors"
 )
-
-// Fields type
-type Fields map[string]interface{}
 
 // Level type
 type Level int
@@ -34,21 +32,17 @@ const (
 	FatalLevelString = "fatal"
 )
 
-const defaultTimeFormat = time.RFC3339
-
 // Logger struct
 type Logger struct {
-	logger *logrus.Logger
+	logger zerolog.Logger
 	config *Config
 }
 
 // Config of logger
 type Config struct {
-	Level      Level
-	LogFile    string
-	TimeFormat string
-	Caller     bool
-	UseColor   bool
+	Level   Level
+	LogFile string
+	Caller  bool
 }
 
 // New logger
@@ -58,10 +52,6 @@ func New(config *Config) (*Logger, error) {
 			Level:  InfoLevel,
 			Caller: false,
 		}
-	}
-
-	if config.TimeFormat == "" {
-		config.TimeFormat = defaultTimeFormat
 	}
 
 	logger, err := newLogger(config)
@@ -77,83 +67,78 @@ func New(config *Config) (*Logger, error) {
 
 // DefaultLogger return default value of logger
 func DefaultLogger() *Logger {
-	// error is ignored because it should not throw any error
-	// test must be updated if configuration is changed
-	logger, err := New(&Config{
-		Level:      InfoLevel,
-		UseColor:   true,
-		TimeFormat: defaultTimeFormat,
-	})
-
-	// only for testing purpose
-	if err != nil {
-		tmpLogger := logrus.New()
-		tmpLogger.Fatal(err)
+	defaultConfig := &Config{Level: InfoLevel, LogFile: ""}
+	// do not check the error as error won't happen
+	// error is only for checking file output
+	l := Logger{
+		logger: defaultLogger(defaultConfig.Level),
+		config: defaultConfig,
 	}
+	return &l
+}
+
+func defaultLogger(level Level) zerolog.Logger {
+	zerolog.TimeFieldFormat = time.RFC3339
+
+	logger := zerolog.New(zerolog.ConsoleWriter{Out: os.Stderr})
+	logger = setLevel(logger, level)
 
 	return logger
 }
 
-func newLogger(config *Config) (*logrus.Logger, error) {
-	logger := logrus.New()
+func newLogger(config *Config) (zerolog.Logger, error) {
+	zerolog.TimeFieldFormat = time.RFC3339
+	zerolog.CallerSkipFrameCount = 4
+	writers := zerolog.MultiLevelWriter(zerolog.ConsoleWriter{Out: os.Stderr})
 
 	// set writer to file if config.LogFile is not empty
 	if config.LogFile != "" {
 		err := os.MkdirAll(filepath.Dir(config.LogFile), 0750)
-		if err != nil && err != os.ErrExist {
-			return nil, err
+		if err != nil {
+			return zerolog.Logger{}, err
 		}
-
 		file, err := os.OpenFile(config.LogFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0655)
 		if err != nil {
-			return nil, err
+			return zerolog.Logger{}, err
 		}
-
-		logger.SetOutput(file)
+		writers = zerolog.MultiLevelWriter(writers, file)
 	}
 
-	logger.SetFormatter(&logrus.TextFormatter{
-		// invert the bool
-		DisableColors:   config.UseColor == false,
-		TimestampFormat: config.TimeFormat,
-	})
-
-	// set caller
-	logger.SetReportCaller(config.Caller)
+	logger := zerolog.New(writers)
+	logger = setLevel(logger, config.Level)
+	if config.Caller {
+		logger = logger.With().Caller().Logger()
+	}
 
 	return logger, nil
 }
 
-func setLevel(logger *logrus.Logger, level Level) {
+func setLevel(logger zerolog.Logger, level Level) zerolog.Logger {
 	switch level {
 	case DebugLevel:
-		logger.SetLevel(logrus.DebugLevel)
+		logger = logger.Level(zerolog.DebugLevel)
 	case InfoLevel:
-		logger.SetLevel(logrus.InfoLevel)
+		logger = logger.Level(zerolog.InfoLevel)
 	case WarnLevel:
-		logger.SetLevel(logrus.WarnLevel)
+		logger = logger.Level(zerolog.WarnLevel)
 	case ErrorLevel:
-		logger.SetLevel(logrus.ErrorLevel)
+		logger = logger.Level(zerolog.ErrorLevel)
 	case FatalLevel:
-		logger.SetLevel(logrus.FatalLevel)
+		logger = logger.Level(zerolog.FatalLevel)
 	default:
-		logger.SetLevel(logrus.InfoLevel)
+		logger = logger.Level(zerolog.InfoLevel)
 	}
+	return logger
 }
 
 // SetLevel for setting log level
 func (l *Logger) SetLevel(level Level) {
-	setLevel(l.logger, level)
+	l.logger = setLevel(l.logger, level)
 }
 
 // SetLevelString set level using string instead of level
 func (l *Logger) SetLevelString(level string) {
-	setLevel(l.logger, StringToLevel(level))
-}
-
-// SetOutput for set logger output
-func (l *Logger) SetOutput(output io.Writer) {
-	l.logger.SetOutput(output)
+	l.logger = setLevel(l.logger, StringToLevel(level))
 }
 
 // StringToLevel convert string to log level
@@ -193,102 +178,103 @@ func LevelToString(l Level) string {
 	}
 }
 
+// DebugEvent function
+func (l *Logger) DebugEvent() *zerolog.Event {
+	return l.logger.Debug().Timestamp()
+}
+
 // Debug function
 func (l *Logger) Debug(args ...interface{}) {
-	l.logger.Debug(args...)
+	l.logger.Debug().Timestamp().Msg(fmt.Sprint(args...))
 }
 
 // Debugf function
 func (l *Logger) Debugf(format string, v ...interface{}) {
-	l.logger.Debugf(format, v...)
+	l.logger.Debug().Timestamp().Msgf(format, v...)
 }
 
-// Debugln function
-func (l *Logger) Debugln(args ...interface{}) {
-	l.logger.Debugln(args...)
-}
-
-// Debugw function
-func (l *Logger) Debugw(message string, fields Fields) {
-	l.logger.WithFields(logrus.Fields(fields)).Debugln(message)
+// InfoEvent function
+func (l *Logger) InfoEvent() *zerolog.Event {
+	return l.logger.Info().Timestamp()
 }
 
 // Info function
 func (l *Logger) Info(args ...interface{}) {
-	l.logger.Info(args...)
+	l.logger.Info().Timestamp().Msg(fmt.Sprint(args...))
 }
 
 // Infof function
 func (l *Logger) Infof(format string, v ...interface{}) {
-	l.logger.Infof(format, v...)
+	l.logger.Info().Timestamp().Msgf(format, v...)
 }
 
-// Infoln function
-func (l *Logger) Infoln(args ...interface{}) {
-	l.logger.Infoln(args...)
-}
-
-// Infow function
-func (l *Logger) Infow(message string, fields Fields) {
-	l.logger.WithFields(logrus.Fields(fields)).Infoln(message)
+// WarnEvent function
+func (l *Logger) WarnEvent() *zerolog.Event {
+	return l.logger.Warn().Timestamp()
 }
 
 // Warn function
 func (l *Logger) Warn(args ...interface{}) {
-	l.logger.Warn(args...)
+	l.logger.Warn().Timestamp().Msg(fmt.Sprint(args...))
 }
 
 // Warnf function
 func (l *Logger) Warnf(format string, v ...interface{}) {
-	l.logger.Warnf(format, v...)
+	l.logger.Warn().Timestamp().Msgf(format, v...)
 }
 
-// Warnln function
-func (l *Logger) Warnln(args ...interface{}) {
-	l.logger.Warnln(args...)
-}
-
-// Warnw function
-func (l *Logger) Warnw(message string, fields Fields) {
-	l.logger.WithFields(logrus.Fields(fields)).Warnln(message)
+// ErrorEvent function
+func (l *Logger) ErrorEvent() *zerolog.Event {
+	return l.logger.Error().Timestamp()
 }
 
 // Error function
 func (l *Logger) Error(args ...interface{}) {
-	l.logger.Error(args...)
+	l.logger.Error().Timestamp().Msg(fmt.Sprint(args...))
 }
 
 // Errorf function
 func (l *Logger) Errorf(format string, v ...interface{}) {
-	l.logger.Errorf(format, v...)
+	l.logger.Error().Timestamp().Msgf(format, v...)
 }
 
-// Errorln function
-func (l *Logger) Errorln(args ...interface{}) {
-	l.logger.Errorln(args...)
+// Errors function to log errors package
+func (l *Logger) Errors(err error) {
+	switch err.(type) {
+	case *errors.Error:
+		e := err.(*errors.Error)
+
+		fields := e.GetFields()
+		if fields == nil {
+			fields = make(errors.Fields)
+		}
+		fields["operations"] = e.OpTraces
+
+		l.logger.Error().Timestamp().Fields(fields).Msg(e.Error())
+	case error:
+		l.logger.Error().Timestamp().Msg(err.Error())
+	}
 }
 
-// Errorw function
-func (l *Logger) Errorw(message string, fields Fields) {
-	l.logger.WithFields(logrus.Fields(fields)).Errorln(message)
+// FatalEvent function
+func (l *Logger) FatalEvent() *zerolog.Event {
+	return l.logger.Fatal().Timestamp()
 }
 
 // Fatal function
 func (l *Logger) Fatal(args ...interface{}) {
-	l.logger.Fatal(args...)
+	l.logger.Fatal().Timestamp().Msg(fmt.Sprint(args...))
 }
 
 // Fatalf function
 func (l *Logger) Fatalf(format string, v ...interface{}) {
-	l.logger.Fatalf(format, v...)
+	l.logger.Fatal().Timestamp().Msgf(format, v...)
 }
 
-// Fatalln function
-func (l *Logger) Fatalln(args ...interface{}) {
-	l.logger.Fatalln(args...)
-}
-
-// Fatalw function
-func (l *Logger) Fatalw(message string, fields Fields) {
-	l.logger.WithFields(logrus.Fields(fields)).Fatalln(message)
+// With function for logging with logging context
+func With(event *zerolog.Event, msg string, keyValues map[string]interface{}) {
+	for k, v := range keyValues {
+		event = event.Interface(k, v)
+	}
+	event.Msg(msg)
 }

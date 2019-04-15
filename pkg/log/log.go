@@ -1,15 +1,93 @@
 package log
 
-import "github.com/albertwidi/goproject/pkg/log/logger"
+import (
+	"github.com/tokopedia/tdk/go/log/logger"
+)
 
-// Fields type
-type Fields map[string]interface{}
+// KV is a type for logging with more information
+// this used by with function
+type KV map[string]interface{}
+
+// level of log
+const (
+	DebugLevel = logger.DebugLevel
+	InfoLevel  = logger.InfoLevel
+	WarnLevel  = logger.WarnLevel
+	ErrorLevel = logger.ErrorLevel
+	FatalLevel = logger.FatalLevel
+)
+
+// Log level
+const (
+	DebugLevelString = "debug"
+	InfoLevelString  = "info"
+	WarnLevelString  = "warn"
+	ErrorLevelString = "error"
+	FatalLevelString = "fatal"
+)
 
 var defaultLogger *logger.Logger
 var debugLogger *logger.Logger
 
 func init() {
 	defaultLogger = logger.DefaultLogger()
+	debugLogger, _ = logger.New(&logger.Config{Level: logger.DebugLevel})
+}
+
+// Config of log
+type Config struct {
+	Level string
+	// LogFile for log to file
+	// this is not needed by default
+	// application is expected to run in containerized environment
+	LogFile   string
+	DebugFile string
+	// set true to log line numbers
+	// make sure you understand the overhead when use this
+	Caller bool
+}
+
+// SetConfig to the current logger
+func SetConfig(config *Config) error {
+	var err error
+
+	loggerConfig := logger.Config{
+		Level: logger.InfoLevel,
+	}
+	debugLoggerConfig := logger.Config{
+		Level: logger.DebugLevel,
+	}
+
+	if config != nil {
+		// level
+		loggerConfig.Level = logger.StringToLevel(config.Level)
+		debugLoggerConfig.Level = logger.StringToLevel(config.Level)
+		// output file
+		loggerConfig.LogFile = config.LogFile
+		debugLoggerConfig.LogFile = config.DebugFile
+		// runtime caller
+		loggerConfig.Caller = config.Caller
+		debugLoggerConfig.Caller = config.Caller
+	}
+
+	newLogger, err := logger.New(&loggerConfig)
+	if err != nil {
+		return err
+	}
+	// extra check because it is very difficult to debug if the log itself causes the panic
+	if newLogger != nil {
+		defaultLogger = newLogger
+	}
+
+	newDebugLogger, err := logger.New(&debugLoggerConfig)
+	if err != nil {
+		return err
+	}
+	if newDebugLogger != nil {
+		debugLogger = newDebugLogger
+	}
+
+	return nil
 }
 
 // SetLevel of log
@@ -27,7 +105,7 @@ func SetLevelString(level string) {
 // this to make sure debugLogger to be disabled when level is > debug
 // and defaultLogger to not overlap with debugLogger
 func setLevel(level logger.Level) {
-	if level < logger.InfoLevel {
+	if level < InfoLevel {
 		debugLogger.SetLevel(level)
 	} else {
 		defaultLogger.SetLevel(level)
@@ -46,8 +124,8 @@ func Debugf(format string, v ...interface{}) {
 }
 
 // Debugw function
-func Debugw(msg string, fields Fields) {
-	debugLogger.Debugw(msg, logger.Fields(fields))
+func Debugw(msg string, keyValues KV) {
+	logger.With(debugLogger.DebugEvent(), msg, keyValues)
 }
 
 // Print function
@@ -65,11 +143,6 @@ func Printf(format string, v ...interface{}) {
 	defaultLogger.Infof(format, v...)
 }
 
-// Printw function
-func Printw(msg string, fields Fields) {
-	defaultLogger.Infow(msg, logger.Fields(fields))
-}
-
 // Info function
 func Info(args ...interface{}) {
 	defaultLogger.Info(args...)
@@ -81,8 +154,8 @@ func Infof(format string, v ...interface{}) {
 }
 
 // Infow function
-func Infow(msg string, fields Fields) {
-	defaultLogger.Infow(msg, logger.Fields(fields))
+func Infow(msg string, keyValues KV) {
+	logger.With(defaultLogger.InfoEvent(), msg, keyValues)
 }
 
 // Warn function
@@ -96,8 +169,8 @@ func Warnf(format string, v ...interface{}) {
 }
 
 // Warnw function
-func Warnw(msg string, fields Fields) {
-	defaultLogger.Warnw(msg, logger.Fields(fields))
+func Warnw(msg string, keyValues KV) {
+	logger.With(defaultLogger.WarnEvent(), msg, keyValues)
 }
 
 // Error function
@@ -111,14 +184,14 @@ func Errorf(format string, v ...interface{}) {
 }
 
 // Errorw function
-func Errorw(msg string, fields Fields) {
-	defaultLogger.Errorw(msg, logger.Fields(fields))
+func Errorw(msg string, keyValues KV) {
+	logger.With(defaultLogger.ErrorEvent(), msg, keyValues)
 }
 
-// // Errors function to log errors package
-// func Errors(err error) {
-// 	defaultLogger.Errors(err)
-// }
+// Errors function to log errors package
+func Errors(err error) {
+	defaultLogger.Errors(err)
+}
 
 // Fatal function
 func Fatal(args ...interface{}) {
@@ -131,6 +204,6 @@ func Fatalf(format string, v ...interface{}) {
 }
 
 // Fatalw function
-func Fatalw(msg string, fields Fields) {
-	defaultLogger.Fatalw(msg, logger.Fields(fields))
+func Fatalw(msg string, keyValues KV) {
+	logger.With(defaultLogger.FatalEvent(), msg, keyValues)
 }
