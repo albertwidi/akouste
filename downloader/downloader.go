@@ -75,8 +75,8 @@ func (d Downloader) HandlerDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	defer reader.Close()
 
-	downloadDIR := filepath.Join(d.config.DestPath, filepath.Base(downloadFrom))
-	err = writeToFile(downloadDIR, reader)
+	destinationFile := filepath.Join(d.config.DestPath, filepath.Base(downloadFrom))
+	err = writeToFile(destinationFile, reader)
 	if err != nil {
 		log.Warnf("write file error: %s", err.Error())
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
@@ -87,7 +87,7 @@ func (d Downloader) HandlerDownload(w http.ResponseWriter, r *http.Request) {
 	if strings.ToLower(unarchive) == "true" {
 		defer func() {
 			// Delete the downloaded archive
-			err = os.RemoveAll(downloadDIR)
+			err = os.RemoveAll(destinationFile)
 			if err != nil {
 				log.Warnf("error delete: %s", err.Error())
 			}
@@ -99,8 +99,8 @@ func (d Downloader) HandlerDownload(w http.ResponseWriter, r *http.Request) {
 			}
 		}()
 
-		unarchiveDir := filepath.Join(d.config.DestPath, folderNameFromFileName(downloadDIR))
-		err = archive.Unarchive(downloadDIR, unarchiveDir)
+		unarchiveDir := filepath.Join(d.config.DestPath, folderNameFromFileName(destinationFile))
+		err = archive.Unarchive(destinationFile, unarchiveDir)
 		if err != nil {
 			log.Warnf("error unarchive: %s\n", err.Error())
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

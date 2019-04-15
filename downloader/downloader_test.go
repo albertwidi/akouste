@@ -24,18 +24,15 @@ var downloader *Downloader
 func TestNew(t *testing.T) {
 	localProvider, err := local.New(local.NewConfig("."))
 	assert.NoError(t, err)
-
 	strg := storage.New(localProvider)
 
-	cfg = Config{
+	downloader, err = New(context.TODO(), strg, Config{
 		DestPath:     ".",
 		KeepOldCount: 2,
-	}
-	downloader, err = New(context.TODO(), strg, cfg)
+	})
 	assert.NoError(t, err)
 }
 
-// TODO test KeepOldCount behaviour too
 func TestHandlerDownload(t *testing.T) {
 	testfile := "testfile.txt"
 	testunarchive := "false"
@@ -68,6 +65,8 @@ func TestHandlerDownload(t *testing.T) {
 	downloadedcontent, err := ioutil.ReadAll(f)
 	assert.NoError(t, err)
 	assert.Equal(t, string(downloadedcontent), testcontent)
+
+	// TODO test KeepOldCount behaviour too
 }
 
 func TestDeleteFilesExceedingN(t *testing.T) {
@@ -110,4 +109,11 @@ func TestDeleteFilesExceedingN(t *testing.T) {
 			filepath.Join(testfiledir, generatedtestfiles[i].Name()))
 	}
 	assert.Equal(t, expect, generatedtestfilelist)
+}
+
+func TestFolderNameFromFileName(t *testing.T) {
+	testfilename := "path/to/file/filename.tar.gz"
+	expect := "filename"
+	result := folderNameFromFileName(testfilename)
+	assert.Equal(t, expect, result)
 }
