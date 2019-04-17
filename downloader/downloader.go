@@ -155,7 +155,7 @@ func deleteFilesExceedingN(dir string, n int) error {
 	}
 	sort.Slice(files, func(left, right int) bool {
 		// sort by last modified time, newest to oldest
-		return files[left].ModTime().Unix() > files[right].ModTime().Unix()
+		return files[left].ModTime().UnixNano() > files[right].ModTime().UnixNano()
 	})
 
 	// This essentially removes files[n:]

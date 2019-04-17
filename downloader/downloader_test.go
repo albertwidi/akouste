@@ -77,6 +77,7 @@ func TestDeleteFilesExceedingN(t *testing.T) {
 	assert.NoError(t, err)
 	defer os.RemoveAll(testfiledir)
 
+	// Generate 3 dummy files
 	for i := 0; i < 3; i++ {
 		filepath := filepath.Join(testfiledir, fmt.Sprintf("test-%d", i))
 		f, err := os.OpenFile(filepath, os.O_CREATE|os.O_RDWR, 0755)
@@ -90,8 +91,9 @@ func TestDeleteFilesExceedingN(t *testing.T) {
 		testfilelist = append(testfilelist, filepath)
 
 		// Since the test is related to file's last modified time,
-		// we wait 1 second between files generation
-		time.Sleep(1000 * time.Millisecond)
+		// we wait 0.1 second between files generation
+		// because the sorting is done in the nanosecond precision level anyway
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	n := 2
