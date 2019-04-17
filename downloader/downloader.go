@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/albertwidi/akouste/pkg/archive"
 	"github.com/albertwidi/akouste/pkg/log"
@@ -154,8 +155,18 @@ func deleteFilesExceedingN(dir string, n int) error {
 		return err
 	}
 	sort.Slice(files, func(left, right int) bool {
+		// If syscall.Stat_t do not exists (tough luck!)
 		// sort by last modified time, newest to oldest
-		return files[left].ModTime().UnixNano() > files[right].ModTime().UnixNano()
+		if _, ok := files[left].Sys().(*syscall.Stat_t); !ok {
+			return files[left].ModTime().UnixNano() > files[right].ModTime().UnixNano()
+		}
+
+		// If the OS rocks, sort by file's last accessed time
+		// We want to sort by last accessed time to avoid deleting files that are still
+		// being used, e.g. they are reverting configuration to older ones
+		leftAccessTime := files[left].Sys().(*syscall.Stat_t).Atim
+		rightAccessTime := files[right].Sys().(*syscall.Stat_t).Atim
+		return leftAccessTime.Nsec > rightAccessTime.Nsec
 	})
 
 	// This essentially removes files[n:]
