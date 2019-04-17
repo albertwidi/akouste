@@ -47,7 +47,7 @@ $ ./configdownloader \
 	-logLevel debug \
 	-bucketProto "local" \
 	-bucketName "test/local-bucket" \
-	-downloadTo "test/local-downloads" \
+	-downloadDIR "test/local-downloads" \
 	-keepOldCount 5
 ```
 
