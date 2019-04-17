@@ -8,6 +8,21 @@ import (
 	"gocloud.dev/blob/fileblob"
 )
 
+// Config for local storage
+type Config struct {
+	// Base local filesystem path
+	// e.g. "/tmp" or "./test-download-location"
+	Bucket string
+}
+
+// Validate config
+func (c *Config) Validate() error {
+	if c.Bucket == "" {
+		return errors.New("empty bucket path")
+	}
+	return nil
+}
+
 // Local storage struct
 type Local struct {
 	config            Config
@@ -49,26 +64,4 @@ func (l *Local) BucketName() string {
 // BucketURL return full path for bucket
 func (l *Local) BucketURL() string {
 	return fmt.Sprintf("%s.%s", "file://", l.BucketName())
-}
-
-// Config for local storage
-type Config struct {
-	// Base local filesystem path
-	// e.g. "/tmp" or "./test-download-location"
-	Bucket string
-}
-
-// Validate config
-func (c *Config) Validate() error {
-	if c.Bucket == "" {
-		return errors.New("empty bucket path")
-	}
-	return nil
-}
-
-// NewConfig function
-func NewConfig(bucket string) Config {
-	return Config{
-		Bucket: bucket,
-	}
 }

@@ -22,7 +22,7 @@ var cfg Config
 var downloader *Downloader
 
 func TestNew(t *testing.T) {
-	localProvider, err := local.New(local.NewConfig("."))
+	localProvider, err := local.New(local.Config{Bucket: "."})
 	assert.NoError(t, err)
 	strg := storage.New(localProvider)
 

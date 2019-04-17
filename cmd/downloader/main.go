@@ -71,14 +71,14 @@ func main() {
 func newStorageProvider(ctx context.Context, bucketProto, bucketName string) (*storage.Storage, error) {
 	switch bucketProto {
 	case "gs":
-		gcs, err := gcs.New(ctx, gcs.NewConfig(bucketName, ""))
+		gcs, err := gcs.New(ctx, gcs.Config{Bucket: bucketName})
 		if err != nil {
 			return nil, err
 		}
 		return storage.New(gcs), nil
 
 	case "local":
-		loc, err := local.New(local.NewConfig(bucketName))
+		loc, err := local.New(local.Config{Bucket: bucketName})
 		if err != nil {
 			return nil, err
 		}

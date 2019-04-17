@@ -7,13 +7,13 @@ import (
 )
 
 func TestValidateSuccess(t *testing.T) {
-	cfg := NewConfig("bucketname", "")
+	cfg := Config{Bucket: "bucketname"}
 	err := cfg.Validate()
 	assert.NoError(t, err)
 }
 
 func TestValidateFail(t *testing.T) {
-	cfg := NewConfig("", "")
+	cfg := Config{Bucket: ""}
 	err := cfg.Validate()
 	assert.EqualError(t, ErrEmptyBucketName, err.Error())
 }

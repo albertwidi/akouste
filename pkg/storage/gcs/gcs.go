@@ -22,14 +22,6 @@ type Config struct {
 	Bucket     string `yaml:"bucket" json:"bucket"`
 }
 
-// NewConfig returns new config object
-func NewConfig(bucketName, accessJSON string) Config {
-	return Config{
-		AccessJSON: accessJSON,
-		Bucket:     bucketName,
-	}
-}
-
 // Validate validates configuration
 func (c Config) Validate() error {
 	if c.Bucket == "" {

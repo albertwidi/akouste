@@ -13,7 +13,7 @@ import (
 var storage *Storage
 
 func TestNew(t *testing.T) {
-	localProvider, err := local.New(local.NewConfig("."))
+	localProvider, err := local.New(local.Config{Bucket: "."})
 	assert.NoError(t, err)
 
 	storage = New(localProvider)
