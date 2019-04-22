@@ -21,7 +21,7 @@ You should be able to see `consul-ui` by accessing `localhost:8500/ui`. To check
 ## Downloader
 
 Downloader downloads+unarchives given file and make sure there
-are only `n` number of downloaded files (deletion starts from the oldest modified file).
+are only `n` number of downloaded files (deletion starts from the oldest accessed file).
 
 Supported download src protocol:
 - `local` for local filesystem
