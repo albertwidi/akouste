@@ -2,30 +2,38 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"github.com/google/go-cloud/blob"
-	"github.com/google/go-cloud/blob/gcsblob"
-	"github.com/google/go-cloud/gcp"
-	"github.com/kosanapp/kosan-backend/pkg/upload"
+	"gocloud.dev/blob"
+	"gocloud.dev/blob/gcsblob"
+	"gocloud.dev/gcp"
 	"golang.org/x/oauth2/google"
+)
+
+// Error variables
+var (
+	ErrEmptyBucketName = errors.New("empty bucket name")
 )
 
 // Config of Google Cloud Storage
 type Config struct {
-	AccessJSON  string `yaml:"access_json" json:"access_json"`
-	Bucket      string `yaml:"bucket" json:"bucket"`
-	BucketProto string `yaml:"bucket_proto" json:"bucket_proto"`
-	BucketURL   string `yaml:"bucket_url" json:"bucket_url"`
+	AccessJSON string `yaml:"access_json" json:"access_json"`
+	Bucket     string `yaml:"bucket" json:"bucket"`
+}
+
+// Validate validates configuration
+func (c Config) Validate() error {
+	if c.Bucket == "" {
+		return ErrEmptyBucketName
+	}
+	return nil
 }
 
 // GCS struct
 type GCS struct {
 	config            Config
-	bucket            string
-	baseURL           string
 	storageBlobBucket *blob.Bucket
-	httpClient        *gcp.HTTPClient
 }
 
 // New gcs storage
@@ -37,11 +45,15 @@ func New(ctx context.Context, config Config) (*GCS, error) {
 		err   error
 	)
 
+	if err = config.Validate(); err != nil {
+		return nil, err
+	}
+
 	if config.AccessJSON != "" {
 		jsonKey := []byte(config.AccessJSON)
 		creds, err = google.CredentialsFromJSON(ctx, jsonKey, "https://www.googleapis.com/auth/cloud-platform")
 	} else {
-		// expecting the gcloud command is invoked
+		// Expects JSON filepath in GOOGLE_APPLICATION_CREDENTIALS env
 		creds, err = gcp.DefaultCredentials(ctx)
 	}
 
@@ -55,7 +67,7 @@ func New(ctx context.Context, config Config) (*GCS, error) {
 		return nil, err
 	}
 
-	bb, err := gcsblob.OpenBucket(ctx, config.Bucket, client, nil)
+	bb, err := gcsblob.OpenBucket(ctx, client, config.Bucket, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +75,6 @@ func New(ctx context.Context, config Config) (*GCS, error) {
 	gcs := GCS{
 		config:            config,
 		storageBlobBucket: bb,
-		httpClient:        client,
 	}
 	return &gcs, nil
 }
@@ -75,7 +86,7 @@ func (gcs *GCS) GetBlobBucket() *blob.Bucket {
 
 // Name of upload provider
 func (gcs *GCS) Name() string {
-	return upload.StorageGCS
+	return "google-cloud-storage"
 }
 
 // BucketName return name of bucket used for upload
@@ -85,5 +96,5 @@ func (gcs *GCS) BucketName() string {
 
 // BucketURL return full path for bucket
 func (gcs *GCS) BucketURL() string {
-	return fmt.Sprintf("%s%s.%s", gcs.config.BucketProto, gcs.BucketName(), gcs.config.BucketURL)
+	return fmt.Sprintf("gs://%s", gcs.BucketName())
 }

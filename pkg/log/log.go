@@ -1,6 +1,6 @@
 package log
 
-import "github.com/albertwidi/goproject/pkg/log/logger"
+import "github.com/albertwidi/akouste/pkg/log/logger"
 
 // Fields type
 type Fields map[string]interface{}
@@ -10,6 +10,7 @@ var debugLogger *logger.Logger
 
 func init() {
 	defaultLogger = logger.DefaultLogger()
+	debugLogger = logger.DefaultLogger()
 }
 
 // SetLevel of log
